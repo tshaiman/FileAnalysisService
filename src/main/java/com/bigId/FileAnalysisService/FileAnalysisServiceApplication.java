@@ -7,6 +7,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 
+/***
+ * FileAnalysisServiceApplication
+ * Author : Tomer Shaiman
+ */
 
 @SpringBootApplication
 public class FileAnalysisServiceApplication implements CommandLineRunner {
@@ -15,8 +19,7 @@ public class FileAnalysisServiceApplication implements CommandLineRunner {
 	private AppConfig myConfig;
 
 	@Autowired
-	private Bootstrap pipelineBootstrap;
-
+	private Orchestrator pipelineBootstrap;
 
 
 	public static void main(String[] args) {
@@ -24,7 +27,8 @@ public class FileAnalysisServiceApplication implements CommandLineRunner {
 		app.run();
 	}
 
-	public void run(String... args) throws Exception {
-		pipelineBootstrap.build();
+	public void run(String... args)  {
+		pipelineBootstrap.run();
+
 	}
 }

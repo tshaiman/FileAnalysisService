@@ -1,93 +1,75 @@
 package com.bigId.FileAnalysisService.pipeline;
 
 
-import com.bigId.FileAnalysisService.Constants;
 import com.bigId.FileAnalysisService.config.AppConfig;
 import com.bigId.FileAnalysisService.contracts.IMatcherService;
 import com.bigId.FileAnalysisService.servicebus.BulkMessage;
 import com.bigId.FileAnalysisService.servicebus.MatcherResult;
-import com.bigId.FileAnalysisService.model.Position;
+import com.bigId.FileAnalysisService.contracts.Position;
 import com.bigId.FileAnalysisService.servicebus.ServiceBus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * A Class to coordinate all the matching workers
  */
 @Service
-public class MatcherService implements IMatcherService {
+public class MatcherService extends ConsumerBase<BulkMessage> implements IMatcherService {
 
     private static Pattern pattern = Pattern.compile("\\w+");
     private static ObjectMapper mapper = new ObjectMapper();
+
     private List<String> lookups;
-    private ServiceBus<String> source;
     private ServiceBus<String> sink;
-    private ThreadPoolExecutor executor;
+    private CountDownLatch completeMatching;
+
     @Autowired
     private AppConfig config;
 
 
-    public MatcherService() {
-    }
-
     @Override
-    public void start(ServiceBus<String> source, ServiceBus<String> sinkTo) {
-        this.source = source;
+    public void start(ServiceBus<String> source, ServiceBus<String> sinkTo, CountDownLatch completedMatching) {
+        this.eventBus = source;
         this.sink = sinkTo;
         this.lookups = config.getLookups();
-        this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(config.getDegreeOfParallelism());
-        for (int i = 0; i < config.getDegreeOfParallelism(); i++) {
-            int finalI = i;
-            this.executor.submit(()-> startMatcherTask(finalI));
-        }
-    }
+        this.completeMatching = completedMatching;
 
-    private void startMatcherTask(int workerId) {
-        while (true) {
-            try {
-                String msg = source.poll(500);
-                if (msg != null) {
+        int degreeOfParallelism = config.getDegreeOfParallelism();
+        logger.info("Starting Matcher Service Processors, degreeOfParallelism = {} .",degreeOfParallelism);
 
-                    if (msg.equals(Constants.EOF)){
-                        System.out.printf("received End of processing request, workerId = %d. exiting%n" , workerId );
-                        break;
-                    }
-                    else {
-                        BulkMessage bulk = mapper.readValue(msg, BulkMessage.class);
-                        processBulk(bulk);
-                    }
-                }
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
-        }
+        ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(degreeOfParallelism);
+        IntStream.rangeClosed(0, degreeOfParallelism)
+                .forEach(i -> executor.submit(this::listenerLoop));
+
     }
 
 
-    private void processBulk(BulkMessage bd) {
-        int startLine = bd.getBulkOffset() * 1000;
-        List<String> lines = bd.getLines();
+    @Override
+    protected void process(BulkMessage bulk) {
+        int startLine = bulk.getBulkOffset() * config.getBulkSize();
+        List<String> lines = bulk.getLines();
         int size = lines.size();
 
         for (int i = 0; i < size; ++i) {
-            List<MatcherResult> bulkResults = processLine(lines.get(i), i + 1 + startLine);
-            bulkResults.forEach(this::sendBulkResult);
+            processLine(lines.get(i), i + 1 + startLine);
         }
     }
 
-    private List<MatcherResult> processLine(String line, int lineNumber) {
-        return reduce(map(line), lineNumber);
+    public void processLine(String line, int lineNumber) {
+        List<MatcherResult> results =  reduce(map(line), lineNumber);
+        results.forEach(this::sendBulkResult);
     }
 
     /**
@@ -99,7 +81,6 @@ public class MatcherService implements IMatcherService {
     private HashMap<String, List<Integer>> map(String line) {
         Matcher matcher = pattern.matcher(line);
         HashMap<String, List<Integer>> hashMap = new HashMap<>();
-
 
         while (matcher.find()) {
             MatchResult mr = matcher.toMatchResult();
@@ -129,7 +110,6 @@ public class MatcherService implements IMatcherService {
     }
 
     private MatcherResult toMatcherResult(String name, HashMap<String, List<Integer>> indexes, int lineNumber) {
-
         if (indexes.containsKey(name)) {
             List<Position> positions =
                     indexes
@@ -144,7 +124,6 @@ public class MatcherService implements IMatcherService {
     }
 
     private void sendBulkResult(MatcherResult matcherResult) {
-
         try {
             String matchResult = mapper.writeValueAsString(matcherResult);
             sink.put(matchResult);
@@ -152,6 +131,13 @@ public class MatcherService implements IMatcherService {
         } catch (JsonProcessingException e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    protected void done() {
+        logger.info("Matcher Service Completed Successfully.");
+        completeMatching.countDown();
+
     }
 
 

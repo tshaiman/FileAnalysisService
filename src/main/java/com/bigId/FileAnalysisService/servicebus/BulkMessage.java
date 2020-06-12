@@ -10,7 +10,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class BulkMessage extends Message {
+public class BulkMessage  {
 
     private List<String> lines;
     private int bulkOffset;
