@@ -1,12 +1,6 @@
 # File Analysis Service
 
-A submission task of BigID candidate exercise.
-submitted by :Tomer Shaiman
-
-The service is reads from a given blackbox utility that emitts json data to the Stdout, parses the data, filter bad input
-and perform several Statics on the event stream :
-* a "word-count" on the data field of the stream
-* a count on the "event-type" field of the stream (a.k.a : how many events per each type received)
+The service maps locations of predefined 'names' (configurable) found in a large text file.
 
 ## Installation Instructions
 The following software must be installed on the host :
@@ -56,6 +50,7 @@ or using docker with mount-bind to the input file that contains the big data tex
     * Vertx could have been used as well since it offers the Reactive framework paradigm.
     * I did however used more OOP then FP in order to make easier reading. 
 - **"Generic"** - The messages are translated to Json Strings, many of the components are <T> , etc.
+- **"Configurable"** - Many aspects can be changed such as the input file, the names dictionary, the degree of parallism etc
 
 ## Improvement Suggestions
 If we want to use this component in production for large scale we need to modify the following :
