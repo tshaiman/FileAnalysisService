@@ -15,14 +15,23 @@ The following software must be installed on the host :
 
 
 ## Test 
-There are only few tests, just to make the point they are needed.
+There are only few tests due to lack of time.
+The tests presetns how to use injection and profiles with SpringBoot.
 ```console
 > mvn test
 ```
 ## Run 
+you can run the project from mvn command line :
 ```console
 > mvn spring-boot:run
 ```
+
+or using docker with mount-bind to the input file that contains the big data text 
+(note the file name must reside in /input/big.txt)
+```console
+> docker run --name file-service -v $(pwd)/input:/app/input  tshaiman/file-analysis-service:1.0
+```
+
 
 
 ## Architecture Overview
@@ -31,6 +40,7 @@ There are only few tests, just to make the point they are needed.
 * ServiceBus current implemenation is BlockingQueue but its easier to migrate to real service bus such as kafka
 * An 'Orchestrator' class is used as Coordinator for building and running the pipeline
 * The Orchestractor is also responsible from controlling when a flow is completed (unlike polling/asking)
+* Configuration is in YAML format , as this is becoming the standard in kubernetes.
 
 
 ![Alt text](images/arch.png?raw=true "architecture")
