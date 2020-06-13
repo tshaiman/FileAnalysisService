@@ -2,12 +2,14 @@ package com.bigId.FileAnalysisService.contracts;
 
 import lombok.AllArgsConstructor;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
+@EqualsAndHashCode
 public class Position implements Comparable<Position>{
     private int lineNumber;
     private int charOffset;

@@ -40,9 +40,11 @@ There are only few tests, just to make the point they are needed.
 - **"Solid"** - e.g : Separation of Concerns, Dependecy Inversion, etc.
 - **"Event Driven System"** - the flow advances by placing events, not calling objects.
 - **"Performance"** - The algorithm I was using (map/reduce) makes it very efficient, its O(n). 
-- **"Functional Programming"** :
+- **"Functional Programming vrs OOP"** :
     * Java does not yet allow a full FP paradigm, but I did try to move away from imperative programming
     * Scala is a better approach here, especially with the Actor framework (Akka)
+    * Vertx could have been used as well since it offers the Reactive framework paradigm.
+    * I did however used more OOP then FP in order to make easier reading. 
 - **"Generic"** - The messages are translated to Json Strings, many of the components are <T> , etc.
 
 ## Improvement Suggestions

@@ -8,6 +8,7 @@ import com.bigId.FileAnalysisService.servicebus.ServiceBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.CountDownLatch;
@@ -15,6 +16,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 @Service
+@Profile("!test")
 public class Orchestrator {
     private Logger logger = LoggerFactory.getLogger(Orchestrator.class);
 

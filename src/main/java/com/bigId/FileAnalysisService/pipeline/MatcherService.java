@@ -9,9 +9,11 @@ import com.bigId.FileAnalysisService.contracts.Position;
 import com.bigId.FileAnalysisService.servicebus.ServiceBus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Setter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -32,18 +34,22 @@ public class MatcherService extends ConsumerBase<BulkMessage> implements IMatche
     private static ObjectMapper mapper = new ObjectMapper();
 
     private List<String> lookups;
+    @Setter
     private ServiceBus<String> sink;
     private CountDownLatch completeMatching;
 
     @Autowired
     private AppConfig config;
 
+    @PostConstruct
+    void postConstruct() {
+        this.lookups = config.getLookups();
+    }
 
     @Override
     public void start(ServiceBus<String> source, ServiceBus<String> sinkTo, CountDownLatch completedMatching) {
         this.eventBus = source;
         this.sink = sinkTo;
-        this.lookups = config.getLookups();
         this.completeMatching = completedMatching;
 
         int degreeOfParallelism = config.getDegreeOfParallelism();
@@ -63,13 +69,13 @@ public class MatcherService extends ConsumerBase<BulkMessage> implements IMatche
         int size = lines.size();
 
         for (int i = 0; i < size; ++i) {
-            processLine(lines.get(i), i + 1 + startLine);
+            List<MatcherResult> results  = processLine(lines.get(i), i + 1 + startLine);
+            results.forEach(this::sendBulkResult);
         }
     }
 
-    public void processLine(String line, int lineNumber) {
-        List<MatcherResult> results =  reduce(map(line), lineNumber);
-        results.forEach(this::sendBulkResult);
+    List<MatcherResult> processLine(String line, int lineNumber) {
+        return reduce(map(line), lineNumber);
     }
 
     /**
