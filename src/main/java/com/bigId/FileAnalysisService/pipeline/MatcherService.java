@@ -1,11 +1,12 @@
 package com.bigId.FileAnalysisService.pipeline;
 
 
+import com.bigId.FileAnalysisService.Constants;
 import com.bigId.FileAnalysisService.config.AppConfig;
 import com.bigId.FileAnalysisService.contracts.IMatcherService;
+import com.bigId.FileAnalysisService.contracts.Position;
 import com.bigId.FileAnalysisService.servicebus.BulkMessage;
 import com.bigId.FileAnalysisService.servicebus.MatcherResult;
-import com.bigId.FileAnalysisService.contracts.Position;
 import com.bigId.FileAnalysisService.servicebus.ServiceBus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,7 +21,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -30,13 +30,13 @@ import java.util.stream.IntStream;
 @Service
 public class MatcherService extends ConsumerBase<BulkMessage> implements IMatcherService {
 
-    private static Pattern pattern = Pattern.compile("\\w+");
+
     private static ObjectMapper mapper = new ObjectMapper();
 
     private List<String> lookups;
     @Setter
     private ServiceBus<String> sink;
-    private CountDownLatch completeMatching;
+
 
     @Autowired
     private AppConfig config;
@@ -47,10 +47,10 @@ public class MatcherService extends ConsumerBase<BulkMessage> implements IMatche
     }
 
     @Override
-    public void start(ServiceBus<String> source, ServiceBus<String> sinkTo, CountDownLatch completedMatching) {
+    public void start(ServiceBus<String> source, ServiceBus<String> sinkTo) {
         this.eventBus = source;
         this.sink = sinkTo;
-        this.completeMatching = completedMatching;
+
 
         int degreeOfParallelism = config.getDegreeOfParallelism();
         logger.info("Starting Matcher Service Processors, degreeOfParallelism = {} .",degreeOfParallelism);
@@ -85,7 +85,7 @@ public class MatcherService extends ConsumerBase<BulkMessage> implements IMatche
      * @return maping of word locations
      */
     private HashMap<String, List<Integer>> map(String line) {
-        Matcher matcher = pattern.matcher(line);
+        Matcher matcher = Constants.pattern.matcher(line);
         HashMap<String, List<Integer>> hashMap = new HashMap<>();
 
         while (matcher.find()) {
@@ -140,10 +140,10 @@ public class MatcherService extends ConsumerBase<BulkMessage> implements IMatche
     }
 
     @Override
-    protected void done() {
+    protected boolean done() {
         logger.info("Matcher Service Completed Successfully.");
-        completeMatching.countDown();
-
+        sink.put(Constants.EOF);
+        return true;
     }
 
 

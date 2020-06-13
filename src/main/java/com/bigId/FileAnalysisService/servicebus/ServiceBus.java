@@ -5,12 +5,17 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+/***
+ * A naive implementation of Event Bus.
+ * Should be replaced by Kafka in production
+ * @param <T>
+ */
 public class ServiceBus<T> {
 
     private BlockingQueue<T> queue ;
 
     public ServiceBus(){
-        this.queue = new LinkedBlockingQueue<>();
+        this.queue = new LinkedBlockingQueue<>(1000);
     }
 
     public void put(T m)  {
@@ -29,13 +34,7 @@ public class ServiceBus<T> {
         }
     }
 
-    public T take() {
-        try {
-            return queue.take();
-        } catch (InterruptedException e) {
-            return null;
-        }
-    }
+
 
 
 }

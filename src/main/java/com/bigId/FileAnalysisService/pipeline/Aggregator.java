@@ -20,28 +20,30 @@ public class Aggregator extends ConsumerBase<MatcherResult> implements IAggregat
     //Our global result concurrent hash map.
     // For Real production scenario : REDIS
     private ConcurrentMap<String, List<Position>> mapGlobal = new ConcurrentHashMap<>();
-    private CountDownLatch completeAggregator ;
+    private int eofGoal;
+    private int eofCounter;
+
 
     @Override
-    public void start(ServiceBus<String> matcherSource, CountDownLatch completeAggregation) {
+    public void start(ServiceBus<String> matcherSource,int eofCounter) {
         logger.info("Staring Aggregator Service");
         this.eventBus = matcherSource;
-        this.completeAggregator = completeAggregation;
+        this.eofGoal = eofCounter;
         Executors.newSingleThreadExecutor().submit(this::listenerLoop);
     }
 
-    @Override
-    public void printResults() {
 
+    private void printResults() {
+        logger.info("Aggregator completed. Result Set :  ");
         mapGlobal.entrySet().stream()
-                .map(kv -> new MatcherResult(kv.getKey(),kv.getValue()))
-                .forEach(mr -> {
-                    try {
-                        logger.info(mapper.writeValueAsString(mr));
-                    } catch (JsonProcessingException e) {
-                        logger.error("could not transform matchResult to Json ",e);
-                    }
-                });
+            .map(kv -> new MatcherResult(kv.getKey(),kv.getValue()))
+            .forEach(mr -> {
+                try {
+                    logger.info(mapper.writeValueAsString(mr));
+                } catch (JsonProcessingException e) {
+                    logger.error("could not transform matchResult to Json ",e);
+                }
+            });
 
     }
 
@@ -57,8 +59,12 @@ public class Aggregator extends ConsumerBase<MatcherResult> implements IAggregat
     }
 
     @Override
-    protected void done() {
-        logger.info("Aggregator has completed");
-        completeAggregator.countDown();
+    protected boolean done() {
+        this.eofCounter++;
+        boolean shouldQuit = this.eofCounter == this.eofGoal;
+        if(shouldQuit) {
+            printResults();
+        }
+        return shouldQuit;
     }
 }

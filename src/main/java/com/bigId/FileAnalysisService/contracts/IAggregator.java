@@ -6,7 +6,7 @@ import java.util.concurrent.CountDownLatch;
 
 public interface IAggregator {
 
-    void start(ServiceBus<String> matcherSource, CountDownLatch completeAggregation);
+    void start(ServiceBus<String> matcherSource,int eofCounter);
 
-    void printResults();
+
 }

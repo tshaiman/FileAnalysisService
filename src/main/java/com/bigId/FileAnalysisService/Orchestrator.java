@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -32,51 +33,30 @@ public class Orchestrator {
     @Autowired
     private AppConfig config ;
 
-    private CountDownLatch completedMatching ;
-    private CountDownLatch completeAggregation;
 
-    ServiceBus<String> aggregatorServiceBus;
+    private ServiceBus<String> aggregatorServiceBus;
+    private ServiceBus<String> readerServiceBus;
 
     public Orchestrator(){
 
     }
 
-    public void run() {
-        completedMatching = new CountDownLatch(config.getDegreeOfParallelism());
-        completeAggregation = new CountDownLatch(1);
-
-        //Building Service Buses
-        ServiceBus<String> inputBulks = new ServiceBus<String>();
+    @PostConstruct
+    private void init() {
+        readerServiceBus = new ServiceBus<>();
         aggregatorServiceBus = new ServiceBus<>();
-
-        //Graph Building
-        aggregator.start(aggregatorServiceBus,completeAggregation);
-        matcherService.start(inputBulks,aggregatorServiceBus,completedMatching);
-        dataReader.start(inputBulks);
-
-        Executors.newSingleThreadExecutor().submit(this::waitAndPrintResults);
+        Executors.newSingleThreadExecutor().submit(this::runPipeline);
 
     }
 
-    private void waitAndPrintResults() {
-        try {
-            boolean completed = completedMatching.await(10, TimeUnit.MINUTES);
-            if(!completed) {
-                logger.warn("FileAnalysis has been timed out. check logs");
-                return;
-            }
-            logger.info("FileAnalysis completed. Result Set :  ");
-            aggregatorServiceBus.put(Constants.EOF);
 
-            completeAggregation.await(10,TimeUnit.SECONDS);
-            aggregator.printResults();
-
-
-        } catch (InterruptedException e) {
-            logger.error("FileAnalysis graph failed",e);
-        }
-
+    private void runPipeline() {
+        aggregator.start(aggregatorServiceBus,config.getDegreeOfParallelism());
+        matcherService.start(readerServiceBus,aggregatorServiceBus);
+        dataReader.start(readerServiceBus);
+        logger.info("Aggregator Service has finished");
 
     }
+
 
 }

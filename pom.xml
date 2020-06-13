@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.bigId</groupId>
 	<artifactId>FileAnalysisService</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0</version>
 	<name>FileAnalysisService</name>
 	<description>Candidate App for BigId using large file parsing techniques</description>
 

@@ -26,12 +26,13 @@ public abstract class ConsumerBase<T>{
     protected void listenerLoop() {
         while (true) {
             try {
-                String msg = eventBus.poll(500);
+                String msg = eventBus.poll(200);
                 if (msg != null) {
 
                     if (msg.equals(Constants.EOF)){
-                        logger.info("{} received EOF processing event. exiting ",this.getClass().getName());
-                        done();
+                        //logger.info("{} received EOF processing event. exiting ",this.getClass().getName());
+                        if (done())
+                            break;
                     }
                     else {
                         T data = mapper.readValue(msg, typeParameterClass);
@@ -45,5 +46,5 @@ public abstract class ConsumerBase<T>{
     }
 
     protected abstract void process(T data);
-    protected abstract void done();
+    protected abstract boolean done();
 }
